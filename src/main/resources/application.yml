@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: junhyun-template
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/junhyun_template?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: root
+    password: password
+
+  # PostgreSQL example. Enable the Gradle dependency and replace datasource settings when needed.
+  # datasource:
+  #   driver-class-name: org.postgresql.Driver
+  #   url: jdbc:postgresql://localhost:5432/junhyun_template
+  #   username: postgres
+  #   password: password
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+    open-in-view: false
+    show-sql: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui/index.html
+  api-docs:
+    path: /v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
