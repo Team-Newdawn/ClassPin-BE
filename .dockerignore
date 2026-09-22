@@ -1,0 +1,9 @@
+.git
+.gradle
+build
+node_modules
+.env*
+.idea
+*.log
+supabase/.temp
+supabase/.branches

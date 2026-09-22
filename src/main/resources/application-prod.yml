@@ -1,0 +1,8 @@
+# All deployment values must be supplied explicitly by environment/secret manager.
+spring:
+  config:
+    import: optional:file:.env.prod[.properties]
+server:
+  error:
+    include-message: never
+    include-stacktrace: never

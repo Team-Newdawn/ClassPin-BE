@@ -1,0 +1,19 @@
+services:
+  api:
+    image: ohpin-be:local
+    build: .
+    env_file:
+      - .env.local
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SUPABASE_URL: http://host.docker.internal:56321
+      SUPABASE_PUBLIC_URL: http://127.0.0.1:56321
+    ports:
+      - "127.0.0.1:8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    init: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true

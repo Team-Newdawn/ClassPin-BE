@@ -1,0 +1,8 @@
+spring:
+  config:
+    import: optional:file:.env.local[.properties]
+ohpin:
+  supabase:
+    public-url: ${SUPABASE_PUBLIC_URL:http://127.0.0.1:56321}
+    url: ${SUPABASE_URL:http://127.0.0.1:56321}
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}

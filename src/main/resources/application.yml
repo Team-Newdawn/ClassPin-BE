@@ -1,38 +1,38 @@
 spring:
   application:
-    name: junhyun-template
-
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/junhyun_template?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: root
-    password: password
-
-  # PostgreSQL example. Enable the Gradle dependency and replace datasource settings when needed.
-  # datasource:
-  #   driver-class-name: org.postgresql.Driver
-  #   url: jdbc:postgresql://localhost:5432/junhyun_template
-  #   username: postgres
-  #   password: password
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-    properties:
-      hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.MySQLDialect
-    open-in-view: false
-    show-sql: true
-
-springdoc:
-  swagger-ui:
-    path: /swagger-ui/index.html
-  api-docs:
-    path: /v3/api-docs
-
+    name: OhPin-BE
+  profiles:
+    default: local
+  threads:
+    virtual:
+      enabled: true
+  mvc:
+    async:
+      request-timeout: 3600000
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+ohpin:
+  supabase:
+    url: ${SUPABASE_URL}
+    public-url: ${SUPABASE_PUBLIC_URL:${SUPABASE_URL}}
+    publishable-key: ${SUPABASE_PUBLISHABLE_KEY}
+  allowed-origins: ${ALLOWED_ORIGINS}
+  conversion:
+    max-concurrent: ${CONVERSION_MAX_CONCURRENT:2}
+    soffice: ${SOFFICE_BINARY:soffice}
+    pdfinfo: ${PDFINFO_BINARY:pdfinfo}
+    pdftoppm: ${PDFTOPPM_BINARY:pdftoppm}
