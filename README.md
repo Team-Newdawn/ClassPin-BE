@@ -141,6 +141,12 @@ EC2 사용자는 Docker 및 `docker compose`를 비밀번호 없이 실행할 �
 | 정리 재시도 | POST `/api/instructor/storage-cleanup` |
 | 헬스 | GET `/actuator/health`, `/actuator/health/liveness` |
 
+## API 문서
+
+애플리케이션 실행 후 Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인합니다.
+Swagger UI의 **Authorize** 버튼에 Supabase access token을 입력하면 인증이 필요한 API를 호출할 수 있습니다.
+토큰 값에는 `Bearer ` 접두사를 붙이지 않습니다.
+
 ## 검증
 
 ```bash
