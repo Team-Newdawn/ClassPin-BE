@@ -2,6 +2,7 @@ package com.ohpin;
 
 import static org.assertj.core.api.Assertions.*;
 
+import com.ohpin.folder.dto.CreateFolderRequest;
 import com.ohpin.folder.entity.Folder;
 import com.ohpin.material.entity.SourcePath;
 import com.ohpin.question.entity.Point;
@@ -13,12 +14,23 @@ class DomainRulesTest {
 
   @Test
   void folderUsesUnicodeCodePointsAndTrims() {
-    assertThat(new Folder("  강의  ", 5).name()).isEqualTo("강의");
-    assertThat(new Folder("😀".repeat(80), 0).name()).hasSize(160);
-    assertThatThrownBy(() -> new Folder("😀".repeat(81), 0))
+    var folder = new CreateFolderRequest("  강의  ", 5, "other", "  정규 수업  ").toEntity();
+    assertThat(folder.name()).isEqualTo("강의");
+    assertThat(folder.purpose()).isEqualTo("other");
+    assertThat(folder.purposeLabel()).isEqualTo("정규 수업");
+    assertThat(new Folder("교육", 0, "education", "ignored").purposeLabel()).isNull();
+    assertThat(new Folder("기타", 0, "other", " ").purposeLabel()).isNull();
+    assertThat(new Folder("😀".repeat(80), 0, "qa", null).name()).hasSize(160);
+    assertThatThrownBy(() -> new Folder("😀".repeat(81), 0, "qa", null))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new Folder(" ", 0)).isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new Folder("강의", 6)).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new Folder(" ", 0, "qa", null))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new Folder("강의", 6, "qa", null))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new Folder("강의", 0, "class", null))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new Folder("강의", 0, "other", "가".repeat(41)))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test

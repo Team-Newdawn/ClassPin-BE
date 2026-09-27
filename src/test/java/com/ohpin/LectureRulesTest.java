@@ -20,7 +20,15 @@ class LectureRulesTest {
     assertThatThrownBy(() -> LectureSettings.validate(Map.of("show_question_pins", "true")))
         .isInstanceOf(IllegalArgumentException.class);
     LectureSettings.validate(
-        Map.of("current_page", 1, "status", "live", "show_question_pins", true));
+        Map.of(
+            "current_page",
+            1,
+            "status",
+            "live",
+            "show_question_pins",
+            true,
+            "presentation_autoplay",
+            false));
   }
 
   @Test

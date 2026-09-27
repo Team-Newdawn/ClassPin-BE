@@ -23,7 +23,7 @@ public class SupabaseFolderRepository implements FolderRepository {
                 "session_folders",
                 Map.of(
                         "select",
-                        "id,name,created_at,color_index",
+                        "id,name,created_at,color_index,purpose,purpose_label",
                         "owner_id",
                         "eq." + c.id(),
                         "order",
@@ -31,11 +31,14 @@ public class SupabaseFolderRepository implements FolderRepository {
     }
 
     public JsonNode create(Caller c, Folder f) {
+        var row = new LinkedHashMap<String, Object>();
+        row.put("owner_id", c.id());
+        row.put("name", f.name());
+        row.put("color_index", f.colorIndex());
+        row.put("purpose", f.purpose());
+        row.put("purpose_label", f.purposeLabel());
         return SupabaseGateway.required(
-                db.insert(
-                        c,
-                        "session_folders",
-                        Map.of("owner_id", c.id(), "name", f.name(), "color_index", f.colorIndex())));
+                db.insert(c, "session_folders", row));
     }
 
     public void rename(Caller c, UUID id, String name) {

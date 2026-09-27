@@ -1,0 +1,24 @@
+name: Feat
+description: 새로운 기능을 제안하거나 구현 작업을 등록합니다.
+title: "[Feat] "
+labels:
+  - feat
+body:
+  - type: markdown
+    attributes:
+      value: 모든 항목은 선택 사항입니다. 필요한 내용만 작성해주세요.
+  - type: textarea
+    id: background
+    attributes:
+      label: 배경
+      description: 기능이 필요한 이유나 해결하려는 문제를 작성해주세요.
+  - type: textarea
+    id: details
+    attributes:
+      label: 작업 내용
+      description: 구현할 기능이나 원하는 동작을 작성해주세요.
+  - type: textarea
+    id: notes
+    attributes:
+      label: 참고 사항
+      description: 참고 자료, 화면 예시, 관련 링크 등이 있다면 작성해주세요.

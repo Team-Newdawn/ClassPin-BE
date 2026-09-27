@@ -9,7 +9,11 @@ public final class LectureSettings {
     }
 
     private static final Set<String> BOOLEANS =
-            Set.of("presentation_interactions", "show_question_pins", "show_presentation_qr");
+            Set.of(
+                    "presentation_interactions",
+                    "presentation_autoplay",
+                    "show_question_pins",
+                    "show_presentation_qr");
     public static final Set<String> POSITIONS =
             Set.of("top-left", "top-right", "bottom-left", "bottom-right");
 

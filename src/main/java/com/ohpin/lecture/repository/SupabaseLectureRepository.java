@@ -17,7 +17,7 @@ public class SupabaseLectureRepository implements LectureRepository {
     }
 
     private static final String LECTURE =
-            "id,course_id,title,join_code,status,current_page,presentation_interactions,show_question_pins,show_presentation_qr,presentation_qr_position,question_categories,created_at";
+            "id,course_id,title,join_code,status,current_page,presentation_interactions,presentation_autoplay,show_question_pins,show_presentation_qr,presentation_qr_position,question_categories,created_at";
     private static final String SLIDE =
             "id,material_version_id,page_index,image_path,source_page_index";
     private static final String QUESTIONS =

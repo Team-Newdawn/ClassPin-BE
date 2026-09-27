@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ohpin.folder.entity.Folder;
+import com.ohpin.folder.repository.SupabaseFolderRepository;
 import com.ohpin.lecture.repository.SupabaseLectureRepository;
 import com.ohpin.material.repository.SupabaseMaterialRepository;
 import com.ohpin.question.repository.SupabaseQuestionRepository;
@@ -16,6 +18,36 @@ class RepositoryBoundaryTest {
   private final SupabaseGateway db = mock(SupabaseGateway.class);
   private final Caller participant =
       new Caller(UUID.randomUUID(), "participant-token", false, null);
+
+  @Test
+  void folderProjectionAndInsertIncludePurposeFields() {
+    var rows = new ObjectMapper().createArrayNode();
+    rows.addObject().put("id", UUID.randomUUID().toString());
+    when(db.insert(eq(participant), eq("session_folders"), any())).thenReturn(rows);
+
+    var repository = new SupabaseFolderRepository(db);
+    repository.list(participant);
+    repository.create(participant, new Folder("Course", 2, "other", "Regular class"));
+
+    verify(db)
+        .get(
+            eq(participant),
+            eq("session_folders"),
+            argThat(
+                query ->
+                    Arrays.asList(query.get("select").split(",")).contains("purpose")
+                        && Arrays.asList(query.get("select").split(","))
+                            .contains("purpose_label")));
+    verify(db)
+        .insert(
+            eq(participant),
+            eq("session_folders"),
+            argThat(
+                body ->
+                    body instanceof Map<?, ?> row
+                        && "other".equals(row.get("purpose"))
+                        && "Regular class".equals(row.get("purpose_label"))));
+  }
 
   @Test
   void participantSlidesCannotSelectInstructorNotes() {
@@ -39,6 +71,7 @@ class RepositoryBoundaryTest {
                 q ->
                     !q.get("select").contains("note")
                         && !q.get("select").contains("author")
+                        && q.get("select").contains("presentation_autoplay")
                         && q.get("status").equals("eq.live")));
   }
 

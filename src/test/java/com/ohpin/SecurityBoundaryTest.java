@@ -20,7 +20,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(
     controllers = FolderController.class,
-    properties = {"ohpin.allowed-origins=http://localhost:3000"})
+    properties = {
+      "ohpin.allowed-origins=http://localhost:3000,http://localhost:3001,http://localhost:3002"
+    })
 @Import(SecurityConfig.class)
 class SecurityBoundaryTest {
   @Autowired MockMvc mvc;
@@ -80,7 +82,8 @@ class SecurityBoundaryTest {
             post("/api/instructor/folders")
                 .header("Authorization", "Bearer valid-token")
                 .contentType("application/json")
-                .content("{\"name\":\"Course\",\"colorIndex\":0,\"owner_id\":\"someone-else\"}"))
+                .content(
+                    "{\"name\":\"Course\",\"colorIndex\":0,\"purpose\":\"education\",\"purposeLabel\":null,\"owner_id\":\"someone-else\"}"))
         .andExpect(status().isBadRequest());
     verifyNoInteractions(folders);
   }
@@ -92,5 +95,18 @@ class SecurityBoundaryTest {
                 .header("Origin", "https://untrusted.example")
                 .header("Access-Control-Request-Method", "POST"))
         .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void configuredLocalCorsOriginsAreAllowed() throws Exception {
+    for (String origin :
+        List.of("http://localhost:3000", "http://localhost:3001", "http://localhost:3002")) {
+      mvc.perform(
+              options("/api/instructor/folders")
+                  .header("Origin", origin)
+                  .header("Access-Control-Request-Method", "POST"))
+          .andExpect(status().isOk())
+          .andExpect(header().string("Access-Control-Allow-Origin", origin));
+    }
   }
 }

@@ -1,0 +1,29 @@
+name: Refactor
+description: 동작을 유지하면서 코드 구조를 개선하는 작업을 등록합니다.
+title: "[Refactor] "
+labels:
+  - refactor
+body:
+  - type: markdown
+    attributes:
+      value: 모든 항목은 선택 사항입니다. 필요한 내용만 작성해주세요.
+  - type: textarea
+    id: target
+    attributes:
+      label: 개선 대상
+      description: 리팩터링할 코드나 구조를 작성해주세요.
+  - type: textarea
+    id: direction
+    attributes:
+      label: 개선 방향
+      description: 변경하려는 구조나 접근 방법을 작성해주세요.
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: 유지해야 할 동작
+      description: 변경 후에도 유지되어야 하는 동작이나 호환성을 작성해주세요.
+  - type: textarea
+    id: notes
+    attributes:
+      label: 참고 사항
+      description: 관련 링크나 주의할 점이 있다면 작성해주세요.

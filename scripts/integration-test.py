@@ -54,9 +54,9 @@ try:
     audience=http(sb,'/auth/v1/signup','POST',{},None,(200,201));users.append(audience['user']['id']);at=audience['access_token']
     api('/api/instructor/folders',expected=401)
     api('/api/instructor/folders',token=at,expected=403)
-    api('/api/instructor/folders','POST',{'name':'  ','colorIndex':0},ot,400)
-    folder=api('/api/instructor/folders','POST',{'name':'  Integration Course  ','colorIndex':4},ot)
-    assert folder['name']=='Integration Course'
+    api('/api/instructor/folders','POST',{'name':'  ','colorIndex':0,'purpose':'other','purposeLabel':'Integration'},ot,400)
+    folder=api('/api/instructor/folders','POST',{'name':'  Integration Course  ','colorIndex':4,'purpose':'other','purposeLabel':'Integration'},ot)
+    assert folder['name']=='Integration Course' and folder['purpose']=='other' and folder['purpose_label']=='Integration'
     api('/api/instructor/folders/'+folder['id'],'PATCH',{'name':'Renamed'},xt,404)
     def draft(code):
         return dict(id=uid(),courseId=uid(),materialId=uid(),materialVersionId=uid(),folderId=folder['id'],title='Integration material',fileName='fixture.pdf',sourcePath=owner_id+'/'+uid()+'/source.pdf',code=code,status='live',currentSlide=0,presentationInteractions=True,showQuestionPins=True,showPresentationQr=True,presentationQrPosition='top-right',questionCategories={'concept':{'label':'','enabled':True,'archived':False}},slides=[{'id':uid(),'pageIndex':i,'sourcePageIndex':i} for i in range(3)])
