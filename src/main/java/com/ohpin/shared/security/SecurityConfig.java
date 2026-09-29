@@ -1,6 +1,8 @@
 package com.ohpin.shared.security;
 
 import com.ohpin.shared.infrastructure.SupabaseGateway;
+import com.ohpin.shared.logging.ApiRequestLoggingFilter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.DispatcherType;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +19,7 @@ public class SecurityConfig {
   SecurityFilterChain security(
       HttpSecurity http,
       SupabaseGateway gateway,
+      ObjectMapper mapper,
       @Value("${ohpin.allowed-origins}") List<String> origins,
       org.springframework.core.env.Environment environment)
       throws Exception {
@@ -68,6 +71,8 @@ public class SecurityConfig {
                         }))
         .addFilterBefore(
             new SupabaseAuthenticationFilter(gateway), UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(
+            new ApiRequestLoggingFilter(mapper), SupabaseAuthenticationFilter.class)
         .build();
   }
 }

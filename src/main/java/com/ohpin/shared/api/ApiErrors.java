@@ -29,8 +29,7 @@ public class ApiErrors {
         && error.getStatusCode().is4xxClientError())
       return ResponseEntity.status(error.getStatusCode())
           .body(Map.of("error", "Invalid HTTP request"));
-    org.slf4j.LoggerFactory.getLogger(ApiErrors.class)
-        .error("API failed ({})", e.getClass().getSimpleName());
+    org.slf4j.LoggerFactory.getLogger(ApiErrors.class).error("Unhandled API error", e);
     return ResponseEntity.internalServerError()
         .body(Map.of("error", "The request could not be completed"));
   }
