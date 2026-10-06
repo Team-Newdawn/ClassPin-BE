@@ -13,7 +13,9 @@ public final class LectureSettings {
                     "presentation_interactions",
                     "presentation_autoplay",
                     "show_question_pins",
-                    "show_presentation_qr");
+                    "show_presentation_qr",
+                    "allow_question_reactions",
+                    "allow_emoji_reactions");
     public static final Set<String> POSITIONS =
             Set.of("top-left", "top-right", "bottom-left", "bottom-right");
 
@@ -28,7 +30,8 @@ public final class LectureSettings {
                             case "current_page" ->
                                     Rules.check(value instanceof Integer page && page >= 0, "Invalid page index");
                             case "status" -> Rules.check(
-                                    value instanceof String status && Set.of("live", "ended").contains(status),
+                                    value instanceof String status
+                                            && Set.of("before", "pending", "live", "ended").contains(status),
                                     "Invalid lecture status");
                             case "presentation_qr_position" -> Rules.check(
                                     value instanceof String position && POSITIONS.contains(position),

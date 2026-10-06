@@ -16,6 +16,8 @@ public interface QuestionRepository {
 
   void react(Caller c, UUID id, boolean reacted);
 
+  void delete(Caller c, UUID id);
+
   void answer(Caller c, UUID id, String body);
 
   void resolve(Caller c, UUID id);

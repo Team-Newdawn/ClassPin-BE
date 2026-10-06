@@ -2,7 +2,7 @@ package com.ohpin.folder.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.ohpin.folder.dto.CreateFolderRequest;
-import com.ohpin.folder.dto.RenameFolderRequest;
+import com.ohpin.folder.dto.UpdateFolderRequest;
 import com.ohpin.folder.service.FolderService;
 import com.ohpin.shared.security.Caller;
 
@@ -31,11 +31,11 @@ public class FolderController {
     }
 
     @PatchMapping("/{id}")
-    void rename(
+    void update(
             @AuthenticationPrincipal Caller c,
             @PathVariable UUID id,
-            @RequestBody RenameFolderRequest body) {
-        service.rename(c, id, body.name());
+            @RequestBody UpdateFolderRequest body) {
+        service.update(c, id, body.toFields());
     }
 
     @DeleteMapping("/{id}")

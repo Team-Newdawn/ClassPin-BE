@@ -56,6 +56,11 @@ public class QuestionController {
     service.react(c, id, b.reacted());
   }
 
+  @DeleteMapping("/api/participant/questions/{id}")
+  void delete(@AuthenticationPrincipal Caller c, @PathVariable UUID id) {
+    service.delete(c, id);
+  }
+
   @PostMapping("/api/instructor/questions/{id}/answers")
   void answer(
       @AuthenticationPrincipal Caller c, @PathVariable UUID id, @RequestBody AnswerRequest b) {

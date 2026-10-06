@@ -84,6 +84,10 @@ public class SupabaseQuestionRepository implements QuestionRepository {
     db.rpc(c, "set_question_reaction", Map.of("target_question_id", id, "target_reacted", reacted));
   }
 
+  public void delete(Caller c, UUID id) {
+    db.rpc(c, "ohpin_delete_participant_question", Map.of("target_question_id", id));
+  }
+
   public void answer(Caller c, UUID id, String body) {
     db.insertOnly(
         c,

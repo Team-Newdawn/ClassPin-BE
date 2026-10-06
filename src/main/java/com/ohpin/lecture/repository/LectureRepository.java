@@ -10,7 +10,11 @@ public interface LectureRepository {
 
     JsonNode liveGraph(Caller c, String column, String value);
 
+    String audienceStatus(Caller c, UUID id, String joinCode);
+
     JsonNode state(Caller c, UUID id);
+
+    JsonNode participantState(Caller c, UUID id);
 
     void update(Caller c, UUID id, Map<String, Object> fields);
 
