@@ -16,8 +16,9 @@ public class SupabaseLectureRepository implements LectureRepository {
         this.db = db;
     }
 
-    private static final String LECTURE =
-            "id,course_id,title,join_code,status,current_page,presentation_interactions,presentation_autoplay,show_question_pins,show_presentation_qr,presentation_qr_position,question_categories,created_at";
+    private static final String AUDIENCE_LECTURE =
+            "id,course_id,title,join_code,status,current_page,presentation_interactions,presentation_autoplay,show_question_pins,show_presentation_qr,presentation_qr_position,question_categories,allow_question_reactions,allow_emoji_reactions,started_at,created_at";
+    private static final String LECTURE = AUDIENCE_LECTURE + ",ended_at";
     private static final String SLIDE =
             "id,material_version_id,page_index,image_path,source_page_index";
     private static final String QUESTIONS =
@@ -41,7 +42,7 @@ public class SupabaseLectureRepository implements LectureRepository {
     public JsonNode liveGraph(Caller c, String column, String value) {
         // Explicit public projection: speaker notes and author identities never enter this response.
         String select =
-                LECTURE
+                AUDIENCE_LECTURE
                         + ",materials!materials_lecture_id_fkey(id,file_name,material_versions(id,version_no,source_path,slides("
                         + SLIDE
                         + ")))";
@@ -55,8 +56,21 @@ public class SupabaseLectureRepository implements LectureRepository {
                 db.get(c, "lectures", Map.of("select", LECTURE, "id", "eq." + id)));
     }
 
+    public JsonNode participantState(Caller c, UUID id) {
+        return SupabaseGateway.first(
+                db.get(c, "lectures", Map.of("select", AUDIENCE_LECTURE, "id", "eq." + id)));
+    }
+
+    public String audienceStatus(Caller c, UUID id, String joinCode) {
+        var params = new LinkedHashMap<String, Object>();
+        params.put("target_id", id);
+        params.put("target_join_code", joinCode);
+        JsonNode result = db.rpc(c, "ohpin_participant_lecture_status", params);
+        return result == null || result.isNull() ? null : result.asText(null);
+    }
+
     public void update(Caller c, UUID id, Map<String, Object> fields) {
-        db.patch(c, "lectures", Map.of("id", "eq." + id, "select", "id"), fields);
+        db.rpc(c, "ohpin_update_lecture_settings", Map.of("target_lecture_id", id, "settings", fields));
     }
 
     public void move(Caller c, UUID id, UUID folderId) {

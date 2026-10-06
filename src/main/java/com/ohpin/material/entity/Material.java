@@ -32,7 +32,8 @@ public record Material(
     fileName = Rules.text(fileName, "File name", 1, 255);
     SourcePath.extension(fileName);
     Rules.check(code != null && code.matches("[A-Z0-9]{6,10}"), "Invalid join code");
-    Rules.check(status != null && Set.of("live", "ended").contains(status), "Invalid status");
+    status = status == null ? "before" : status;
+    Rules.check("before".equals(status), "Invalid status");
     Rules.check(
         presentationInteractions != null && showQuestionPins != null && showPresentationQr != null,
         "Presentation flags required");

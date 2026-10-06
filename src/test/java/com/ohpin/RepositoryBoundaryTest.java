@@ -72,7 +72,29 @@ class RepositoryBoundaryTest {
                     !q.get("select").contains("note")
                         && !q.get("select").contains("author")
                         && q.get("select").contains("presentation_autoplay")
+                        && q.get("select").contains("started_at")
+                        && !q.get("select").contains("ended_at")
                         && q.get("status").equals("eq.live")));
+  }
+
+  @Test
+  void lectureUpdatesAndParticipantDeletesUseGuardedRpcs() {
+    UUID lecture = UUID.randomUUID();
+    UUID question = UUID.randomUUID();
+    var repository = new SupabaseLectureRepository(db);
+    repository.update(participant, lecture, Map.of("status", "pending"));
+    new SupabaseQuestionRepository(db).delete(participant, question);
+
+    verify(db)
+        .rpc(
+            participant,
+            "ohpin_update_lecture_settings",
+            Map.of("target_lecture_id", lecture, "settings", Map.of("status", "pending")));
+    verify(db)
+        .rpc(
+            participant,
+            "ohpin_delete_participant_question",
+            Map.of("target_question_id", question));
   }
 
   @Test

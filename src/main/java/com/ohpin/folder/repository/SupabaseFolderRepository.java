@@ -41,8 +41,8 @@ public class SupabaseFolderRepository implements FolderRepository {
                 db.insert(c, "session_folders", row));
     }
 
-    public void rename(Caller c, UUID id, String name) {
-        db.patch(c, "session_folders", owned(c, id), Map.of("name", name));
+    public void update(Caller c, UUID id, Map<String, Object> fields) {
+        db.patch(c, "session_folders", owned(c, id), fields);
     }
 
     public void delete(Caller c, UUID id) {

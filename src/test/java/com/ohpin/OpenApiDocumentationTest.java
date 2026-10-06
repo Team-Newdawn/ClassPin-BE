@@ -27,7 +27,11 @@ class OpenApiDocumentationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.info.title").value("OhPin API"))
         .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.type").value("http"))
-        .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"));
+        .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"))
+        .andExpect(jsonPath("$.components.schemas.UpdateLectureRequest.properties.current_page.type").value("integer"))
+        .andExpect(jsonPath("$.components.schemas.UpdateLectureRequest.properties.allow_question_reactions.type").value("boolean"))
+        .andExpect(jsonPath("$.components.schemas.UpdateLectureRequest.properties.allow_emoji_reactions.type").value("boolean"))
+        .andExpect(jsonPath("$.components.schemas.UpdateLectureRequest.properties.join_code").doesNotExist());
   }
 
   @Test

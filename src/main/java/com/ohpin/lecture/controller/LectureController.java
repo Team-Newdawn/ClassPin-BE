@@ -2,6 +2,8 @@ package com.ohpin.lecture.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.ohpin.lecture.dto.MoveCourseRequest;
+import com.ohpin.lecture.dto.AudienceLectureResult;
+import com.ohpin.lecture.dto.UpdateLectureRequest;
 import com.ohpin.lecture.service.LectureService;
 import com.ohpin.material.service.StorageCleanupService;
 import com.ohpin.shared.security.Caller;
@@ -9,6 +11,7 @@ import com.ohpin.shared.security.Caller;
 import java.util.*;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -27,26 +30,32 @@ public class LectureController {
     }
 
     @GetMapping("/api/participant/join/{code}")
-    JsonNode join(@AuthenticationPrincipal Caller c, @PathVariable String code) {
-        return service.join(c, code);
+    ResponseEntity<JsonNode> join(@AuthenticationPrincipal Caller c, @PathVariable String code) {
+        return response(service.join(c, code));
     }
 
     @GetMapping("/api/participant/lectures/{id}")
-    JsonNode live(@AuthenticationPrincipal Caller c, @PathVariable UUID id) {
-        return service.live(c, id);
+    ResponseEntity<JsonNode> live(@AuthenticationPrincipal Caller c, @PathVariable UUID id) {
+        return response(service.live(c, id));
     }
 
-    @GetMapping({"/api/instructor/lectures/{id}/state", "/api/participant/lectures/{id}/state"})
-    JsonNode state(@AuthenticationPrincipal Caller c, @PathVariable UUID id) {
-        return service.state(c, id);
+    @GetMapping("/api/instructor/lectures/{id}/state")
+    JsonNode instructorState(@AuthenticationPrincipal Caller c, @PathVariable UUID id) {
+        return service.instructorState(c, id);
+    }
+
+    @GetMapping("/api/participant/lectures/{id}/state")
+    ResponseEntity<JsonNode> participantState(
+            @AuthenticationPrincipal Caller c, @PathVariable UUID id) {
+        return response(service.participantState(c, id));
     }
 
     @PatchMapping("/api/instructor/lectures/{id}")
     void update(
             @AuthenticationPrincipal Caller c,
             @PathVariable UUID id,
-            @RequestBody Map<String, Object> fields) {
-        service.update(c, id, fields);
+            @RequestBody UpdateLectureRequest body) {
+        service.update(c, id, body.toFields());
     }
 
     @PatchMapping("/api/instructor/courses/{id}/folder")
@@ -66,5 +75,11 @@ public class LectureController {
     @PostMapping("/api/instructor/storage-cleanup")
     Map<String, Object> retry(@AuthenticationPrincipal Caller c) {
         return Map.of("cleanupPending", !cleanup.retry(c));
+    }
+
+    private ResponseEntity<JsonNode> response(AudienceLectureResult result) {
+        return result.body() == null
+                ? ResponseEntity.status(result.status()).build()
+                : ResponseEntity.status(result.status()).body(result.body());
     }
 }

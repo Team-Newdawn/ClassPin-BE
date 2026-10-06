@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.*;
 
 import com.ohpin.experience.entity.Experience;
 import com.ohpin.lecture.entity.LectureSettings;
+import com.ohpin.lecture.dto.UpdateLectureRequest;
 import com.ohpin.question.dto.QuestionContent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +30,33 @@ class LectureRulesTest {
             "show_question_pins",
             true,
             "presentation_autoplay",
+            false,
+            "allow_question_reactions",
+            true,
+            "allow_emoji_reactions",
             false));
+    LectureSettings.validate(Map.of("status", "before"));
+    LectureSettings.validate(Map.of("status", "pending"));
+  }
+
+  @Test
+  void typedLecturePatchOnlySerializesProvidedFields() {
+    var request =
+        new UpdateLectureRequest(
+            null, "pending", null, null, null, null, null, null, false, null);
+    assertThat(request.toFields())
+        .containsOnly(
+            entry("status", "pending"),
+            entry("allow_question_reactions", false));
+  }
+
+  @Test
+  void typedLecturePatchRejectsExplicitNullValues() {
+    assertThatThrownBy(
+            () ->
+                new ObjectMapper()
+                    .readValue("{\"status\":null,\"current_page\":0}", UpdateLectureRequest.class))
+        .hasMessageContaining("Invalid `null` value");
   }
 
   @Test

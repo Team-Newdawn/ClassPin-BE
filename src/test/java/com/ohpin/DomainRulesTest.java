@@ -3,10 +3,13 @@ package com.ohpin;
 import static org.assertj.core.api.Assertions.*;
 
 import com.ohpin.folder.dto.CreateFolderRequest;
+import com.ohpin.folder.dto.UpdateFolderRequest;
 import com.ohpin.folder.entity.Folder;
+import com.ohpin.material.dto.CreateMaterialRequest;
+import com.ohpin.material.entity.Material;
 import com.ohpin.material.entity.SourcePath;
 import com.ohpin.question.entity.Point;
-import java.util.UUID;
+import java.util.*;
 import org.junit.jupiter.api.Test;
 
 class DomainRulesTest {
@@ -34,11 +37,76 @@ class DomainRulesTest {
   }
 
   @Test
+  void folderPatchUpdatesOnlySentFieldsAndClearsLabelsForBuiltInPurposes() {
+    assertThat(new UpdateFolderRequest("  새 이름  ", null, null).toFields())
+        .containsExactly(entry("name", "새 이름"));
+    assertThat(new UpdateFolderRequest(null, "education", "ignored").toFields())
+        .containsEntry("purpose", "education")
+        .containsEntry("purpose_label", null);
+    assertThat(new UpdateFolderRequest(null, "other", "  워크숍  ").toFields())
+        .containsEntry("purpose", "other")
+        .containsEntry("purpose_label", "워크숍");
+    assertThatThrownBy(() -> new UpdateFolderRequest(null, null, null).toFields())
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
   void pointRejectsNonFiniteAndOutOfRangeCoordinates() {
     assertThat(new Point(0.0, 1.0).y()).isEqualTo(1);
     for (Double x : new Double[] {null, Double.NaN, Double.POSITIVE_INFINITY, -0.01, 1.01}) {
       assertThatThrownBy(() -> new Point(x, 0.5)).isInstanceOf(IllegalArgumentException.class);
     }
+  }
+
+  @Test
+  void newMaterialsDefaultToBeforeAndRejectOtherInitialStatuses() {
+    var categories =
+        Map.<String, Object>of(
+            "concept", Map.of("label", "", "enabled", true, "archived", false));
+    var slide = new Material.SlideDraft(UUID.randomUUID(), 0, null, 0);
+    var request =
+        new CreateMaterialRequest(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            null,
+            "Lecture",
+            "lecture.pdf",
+            owner + "/lecture.pdf",
+            "ABC123",
+            null,
+            0,
+            true,
+            true,
+            true,
+            "bottom-right",
+            categories,
+            List.of(slide));
+    assertThat(request.toEntity().status()).isEqualTo("before");
+
+    assertThatThrownBy(
+            () ->
+                new CreateMaterialRequest(
+                        request.id(),
+                        request.courseId(),
+                        request.materialId(),
+                        request.materialVersionId(),
+                        request.folderId(),
+                        request.title(),
+                        request.fileName(),
+                        request.sourcePath(),
+                        request.code(),
+                        "live",
+                        request.currentSlide(),
+                        request.presentationInteractions(),
+                        request.showQuestionPins(),
+                        request.showPresentationQr(),
+                        request.presentationQrPosition(),
+                        request.questionCategories(),
+                        request.slides())
+                    .toEntity())
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test

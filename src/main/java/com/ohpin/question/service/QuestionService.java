@@ -36,6 +36,10 @@ public class QuestionService {
     repository.react(c, id, reacted);
   }
 
+  public void delete(Caller c, UUID id) {
+    repository.delete(c, id);
+  }
+
   public void answer(Caller c, UUID id, String body) {
     repository.answer(c, id, Rules.text(body, "Answer", 1, 2000));
   }
