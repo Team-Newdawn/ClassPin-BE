@@ -6,24 +6,45 @@ import com.fasterxml.jackson.annotation.Nulls;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public record UpdateLectureRequest(
-    @JsonProperty("current_page") @JsonSetter(nulls = Nulls.FAIL) Integer currentPage,
-    @JsonSetter(nulls = Nulls.FAIL) String status,
-    @JsonProperty("presentation_interactions") @JsonSetter(nulls = Nulls.FAIL)
-        Boolean presentationInteractions,
-    @JsonProperty("presentation_autoplay") @JsonSetter(nulls = Nulls.FAIL)
-        Boolean presentationAutoplay,
-    @JsonProperty("show_question_pins") @JsonSetter(nulls = Nulls.FAIL) Boolean showQuestionPins,
-    @JsonProperty("show_presentation_qr") @JsonSetter(nulls = Nulls.FAIL)
-        Boolean showPresentationQr,
-    @JsonProperty("presentation_qr_position") @JsonSetter(nulls = Nulls.FAIL)
-        String presentationQrPosition,
-    @JsonProperty("question_categories") @JsonSetter(nulls = Nulls.FAIL)
-        Map<String, Object> questionCategories,
-    @JsonProperty("allow_question_reactions") @JsonSetter(nulls = Nulls.FAIL)
-        Boolean allowQuestionReactions,
-    @JsonProperty("allow_emoji_reactions") @JsonSetter(nulls = Nulls.FAIL)
-        Boolean allowEmojiReactions) {
+public final class UpdateLectureRequest {
+  @JsonProperty("current_page")
+  @JsonSetter(nulls = Nulls.FAIL)
+  private Integer currentPage;
+
+  @JsonSetter(nulls = Nulls.FAIL)
+  private String status;
+
+  @JsonProperty("presentation_interactions")
+  @JsonSetter(nulls = Nulls.FAIL)
+  private Boolean presentationInteractions;
+
+  @JsonProperty("presentation_autoplay")
+  @JsonSetter(nulls = Nulls.FAIL)
+  private Boolean presentationAutoplay;
+
+  @JsonProperty("show_question_pins")
+  @JsonSetter(nulls = Nulls.FAIL)
+  private Boolean showQuestionPins;
+
+  @JsonProperty("show_presentation_qr")
+  @JsonSetter(nulls = Nulls.FAIL)
+  private Boolean showPresentationQr;
+
+  @JsonProperty("presentation_qr_position")
+  @JsonSetter(nulls = Nulls.FAIL)
+  private String presentationQrPosition;
+
+  @JsonProperty("question_categories")
+  @JsonSetter(nulls = Nulls.FAIL)
+  private Map<String, Object> questionCategories;
+
+  @JsonProperty("allow_question_reactions")
+  @JsonSetter(nulls = Nulls.FAIL)
+  private Boolean allowQuestionReactions;
+
+  @JsonProperty("allow_emoji_reactions")
+  @JsonSetter(nulls = Nulls.FAIL)
+  private Boolean allowEmojiReactions;
 
   public Map<String, Object> toFields() {
     var fields = new LinkedHashMap<String, Object>();

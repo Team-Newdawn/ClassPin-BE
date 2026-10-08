@@ -40,14 +40,24 @@ class LectureRulesTest {
   }
 
   @Test
-  void typedLecturePatchOnlySerializesProvidedFields() {
+  void typedLecturePatchOnlySerializesProvidedFields() throws Exception {
     var request =
-        new UpdateLectureRequest(
-            null, "pending", null, null, null, null, null, null, false, null);
+        new ObjectMapper()
+            .readValue(
+                "{\"status\":\"pending\",\"allow_question_reactions\":false}",
+                UpdateLectureRequest.class);
     assertThat(request.toFields())
         .containsOnly(
             entry("status", "pending"),
             entry("allow_question_reactions", false));
+  }
+
+  @Test
+  void statusOnlyLecturePatchDeserializesLikeTheProductionRequest() throws Exception {
+    var request =
+        new ObjectMapper().readValue("{\"status\":\"live\"}", UpdateLectureRequest.class);
+
+    assertThat(request.toFields()).containsOnly(entry("status", "live"));
   }
 
   @Test
