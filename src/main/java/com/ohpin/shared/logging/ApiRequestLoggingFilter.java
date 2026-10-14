@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.UUID;
 import org.slf4j.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -20,6 +21,9 @@ public final class ApiRequestLoggingFilter extends OncePerRequestFilter {
   private static final Logger log = LoggerFactory.getLogger(ApiRequestLoggingFilter.class);
   private static final int MAX_CAPTURE_BYTES = 64 * 1024;
   private static final int MAX_LOG_CHARS = 4 * 1024;
+  private static final String REQUEST_ID = "requestId";
+  private static final java.util.regex.Pattern SAFE_REQUEST_ID =
+      java.util.regex.Pattern.compile("(?:[a-fA-F0-9]{32}|[a-fA-F0-9]{8}-(?:[a-fA-F0-9]{4}-){3}[a-fA-F0-9]{12})");
 
   private final ObjectMapper mapper;
 
@@ -38,6 +42,10 @@ public final class ApiRequestLoggingFilter extends OncePerRequestFilter {
       HttpServletRequest request, HttpServletResponse response, FilterChain chain)
       throws ServletException, IOException {
     var wrapped = new ContentCachingRequestWrapper(request, MAX_CAPTURE_BYTES);
+    String requestId = requestId(request.getHeader("X-Request-ID"));
+    String previousRequestId = MDC.get(REQUEST_ID);
+    MDC.put(REQUEST_ID, requestId);
+    response.setHeader("X-Request-ID", requestId);
     long started = System.nanoTime();
     Throwable failure = null;
     try {
@@ -48,14 +56,15 @@ public final class ApiRequestLoggingFilter extends OncePerRequestFilter {
     } finally {
       int status = failure == null ? response.getStatus() : 500;
       String message =
-          "API method={} path={} status={} durationMs={} userId={} request={}";
+          "API method={} path={} status={} durationMs={} userId={} request={} requestId={}";
       Object[] values = {
         request.getMethod(),
         safePath(request),
         status,
         (System.nanoTime() - started) / 1_000_000,
         userId(),
-        requestBody(wrapped)
+        requestBody(wrapped),
+        requestId
       };
       if (failure != null) {
         Object[] valuesWithFailure = Arrays.copyOf(values, values.length + 1);
@@ -65,7 +74,15 @@ public final class ApiRequestLoggingFilter extends OncePerRequestFilter {
       else if (status >= 500) log.error(message, values);
       else if (status >= 400) log.warn(message, values);
       else log.info(message, values);
+      if (previousRequestId == null) MDC.remove(REQUEST_ID);
+      else MDC.put(REQUEST_ID, previousRequestId);
     }
+  }
+
+  private String requestId(String provided) {
+    return provided != null && SAFE_REQUEST_ID.matcher(provided).matches()
+        ? provided
+        : UUID.randomUUID().toString();
   }
 
   private String safePath(HttpServletRequest request) {

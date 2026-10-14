@@ -1,5 +1,6 @@
 package com.ohpin.shared.security;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.ohpin.shared.api.ApiFailure;
 import com.ohpin.shared.infrastructure.SupabaseGateway;
 import jakarta.servlet.*;
@@ -38,15 +39,19 @@ public class SupabaseAuthenticationFilter extends OncePerRequestFilter {
       String token = authorization.substring(7);
       var user = gateway.json(token, "GET", "/auth/v1/user", Map.of(), null, null);
       UUID id = UUID.fromString(user.path("id").asText());
-      var preliminary = new Caller(id, token, false, null);
-      var profile =
-          SupabaseGateway.first(
-              gateway.get(
-                  preliminary,
-                  "profiles",
-                  Map.of("select", "id,role,email,display_name,avatar_url", "id", "eq." + id)));
+      boolean anonymous = user.path("is_anonymous").asBoolean(true);
+      JsonNode profile = null;
+      if (!anonymous) {
+        var preliminary = new Caller(id, token, false, null);
+        profile =
+            SupabaseGateway.first(
+                gateway.get(
+                    preliminary,
+                    "profiles",
+                    Map.of("select", "id,role,email,display_name,avatar_url", "id", "eq." + id)));
+      }
       boolean instructor =
-          !user.path("is_anonymous").asBoolean(true)
+          !anonymous
               && profile != null
               && profile.path("role").asText().equals("admin");
       var caller = new Caller(id, token, instructor, profile);

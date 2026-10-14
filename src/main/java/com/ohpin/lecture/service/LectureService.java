@@ -26,11 +26,11 @@ public class LectureService {
     public AudienceLectureResult join(Caller c, String code) {
         String normalized = Rules.text(code, "Join code", 6, 10).toUpperCase(Locale.ROOT);
         Rules.check(normalized.matches("[A-Z0-9]{6,10}"), "Invalid join code");
-        return audience(c, null, normalized, false);
+        return audience(c, null, normalized);
     }
 
     public AudienceLectureResult live(Caller c, UUID id) {
-        return audience(c, id, null, false);
+        return audience(c, id, null);
     }
 
     public JsonNode instructorState(Caller c, UUID id) {
@@ -38,7 +38,16 @@ public class LectureService {
     }
 
     public AudienceLectureResult participantState(Caller c, UUID id) {
-        return audience(c, id, null, true);
+        JsonNode body = repository.participantState(c, id);
+        if (body != null) return new AudienceLectureResult(200, body);
+        String status = repository.audienceStatus(c, id, null);
+        if (status == null || "archived".equals(status))
+            return new AudienceLectureResult(404, null);
+        if ("before".equals(status) || "pending".equals(status))
+            return new AudienceLectureResult(204, null);
+        if ("ended".equals(status))
+            return new AudienceLectureResult(410, null);
+        return new AudienceLectureResult(404, null);
     }
 
     public void update(Caller c, UUID id, Map<String, Object> values) {
@@ -46,16 +55,14 @@ public class LectureService {
         repository.update(c, id, values);
     }
 
-    private AudienceLectureResult audience(Caller c, UUID id, String code, boolean stateOnly) {
+    private AudienceLectureResult audience(Caller c, UUID id, String code) {
         String status = repository.audienceStatus(c, id, code);
         if (status == null || "archived".equals(status)) return new AudienceLectureResult(404, null);
         if ("before".equals(status) || "pending".equals(status))
             return new AudienceLectureResult(204, null);
         if ("ended".equals(status)) return new AudienceLectureResult(410, null);
         if (!"live".equals(status)) return new AudienceLectureResult(404, null);
-        JsonNode body = stateOnly
-                ? repository.participantState(c, id)
-                : repository.liveGraph(c, id == null ? "join_code" : "id", id == null ? code : id.toString());
+        JsonNode body = repository.liveGraph(c, id == null ? "join_code" : "id", id == null ? code : id.toString());
         if (body == null) {
             String current = repository.audienceStatus(c, id, code);
             if ("before".equals(current) || "pending".equals(current))
