@@ -147,6 +147,8 @@ EC2 사용자는 Docker 및 `docker compose`를 비밀번호 없이 실행할 �
 Swagger UI의 **Authorize** 버튼에 Supabase access token을 입력하면 인증이 필요한 API를 호출할 수 있습니다.
 토큰 값에는 `Bearer ` 접두사를 붙이지 않습니다.
 
+서버 오류의 request ID 추적 및 Nginx 상관 로그 설정은 [`docs/observability.md`](docs/observability.md)를 참고하세요.
+
 ## 검증
 
 ```bash

@@ -7,11 +7,16 @@ import java.io.*;
 import java.net.http.*;
 import java.time.Duration;
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
 public class SupabaseGateway {
+  private static final Logger log = LoggerFactory.getLogger(SupabaseGateway.class);
+  private static final long SLOW_REQUEST_MS = 1_000;
   private final HttpClient client =
       HttpClient.newBuilder()
           .connectTimeout(Duration.ofSeconds(10))
@@ -46,6 +51,7 @@ public class SupabaseGateway {
       Map<String, String> query,
       Object body,
       String prefer) {
+    long started = System.nanoTime();
     try {
       var req = request(token, path, query).header("Content-Type", "application/json");
       if (prefer != null) req.header("Prefer", prefer);
@@ -55,14 +61,41 @@ public class SupabaseGateway {
               : HttpRequest.BodyPublishers.ofByteArray(mapper.writeValueAsBytes(body));
       var res =
           client.send(req.method(method, payload).build(), HttpResponse.BodyHandlers.ofString());
+      logUpstream(method, path, res.statusCode(), started);
       if (res.statusCode() >= 400) throw failure(res.statusCode());
       return res.body().isBlank() ? mapper.nullNode() : mapper.readTree(res.body());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+      log.error("Supabase request interrupted requestId={} method={} path={} durationMs={}",
+          requestId(), method, path, elapsedMs(started));
       throw new ApiFailure(503, "Upstream request interrupted");
     } catch (IOException e) {
+      log.error("Supabase request failed requestId={} method={} path={} durationMs={} cause={}",
+          requestId(), method, path, elapsedMs(started), e.getClass().getSimpleName(), e);
       throw new ApiFailure(502, "Supabase is unavailable");
     }
+  }
+
+  private void logUpstream(String method, String path, int status, long started) {
+    long durationMs = elapsedMs(started);
+    if (status >= 500) {
+      log.error("Supabase response requestId={} method={} path={} status={} durationMs={}",
+          requestId(), method, path, status, durationMs);
+    } else if (status >= 400) {
+      log.warn("Supabase response requestId={} method={} path={} status={} durationMs={}",
+          requestId(), method, path, status, durationMs);
+    } else if (durationMs >= SLOW_REQUEST_MS) {
+      log.warn("Slow Supabase response requestId={} method={} path={} status={} durationMs={}",
+          requestId(), method, path, status, durationMs);
+    }
+  }
+
+  private long elapsedMs(long started) {
+    return (System.nanoTime() - started) / 1_000_000;
+  }
+
+  private String requestId() {
+    return Objects.requireNonNullElse(MDC.get("requestId"), "-");
   }
 
   public JsonNode get(Caller c, String table, Map<String, String> query) {
@@ -102,6 +135,8 @@ public class SupabaseGateway {
 
   public void download(
       Caller c, String bucket, String path, java.nio.file.Path destination, long limit) {
+    long started = System.nanoTime();
+    String endpoint = "/storage/v1/object/authenticated/" + bucket + "/[object]";
     try {
       var res =
           client.send(
@@ -113,6 +148,7 @@ public class SupabaseGateway {
                   .GET()
                   .build(),
               HttpResponse.BodyHandlers.ofInputStream());
+      logUpstream("GET", endpoint, res.statusCode(), started);
       try (var input = res.body()) {
         if (res.statusCode() >= 400) throw failure(res.statusCode());
         try (var output = java.nio.file.Files.newOutputStream(destination)) {
@@ -128,13 +164,19 @@ public class SupabaseGateway {
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+      log.error("Supabase request interrupted requestId={} method=GET path={} durationMs={}",
+          requestId(), endpoint, elapsedMs(started));
       throw new ApiFailure(503, "Download interrupted");
     } catch (IOException e) {
+      log.error("Supabase request failed requestId={} method=GET path={} durationMs={} cause={}",
+          requestId(), endpoint, elapsedMs(started), e.getClass().getSimpleName(), e);
       throw new ApiFailure(502, "Source download failed");
     }
   }
 
   public void upload(Caller c, String path, java.nio.file.Path file) {
+    long started = System.nanoTime();
+    String endpoint = "/storage/v1/object/lecture-slides/[object]";
     try {
       var res =
           client.send(
@@ -144,11 +186,16 @@ public class SupabaseGateway {
                   .POST(HttpRequest.BodyPublishers.ofFile(file))
                   .build(),
               HttpResponse.BodyHandlers.discarding());
+      logUpstream("POST", endpoint, res.statusCode(), started);
       if (res.statusCode() >= 400) throw failure(res.statusCode());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+      log.error("Supabase request interrupted requestId={} method=POST path={} durationMs={}",
+          requestId(), endpoint, elapsedMs(started));
       throw new ApiFailure(503, "Upload interrupted");
     } catch (IOException e) {
+      log.error("Supabase request failed requestId={} method=POST path={} durationMs={} cause={}",
+          requestId(), endpoint, elapsedMs(started), e.getClass().getSimpleName(), e);
       throw new ApiFailure(502, "Slide upload failed");
     }
   }
