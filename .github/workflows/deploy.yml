@@ -62,6 +62,8 @@ jobs:
               allowed["API_BIND_ADDRESS"] = 1
               allowed["API_PORT"] = 1
               allowed["MANAGEMENT_PORT"] = 1
+              allowed["GRAFANA_ADMIN_USER"] = 1
+              allowed["GRAFANA_ADMIN_PASSWORD"] = 1
               allowed["CONVERSION_MAX_CONCURRENT"] = 1
             }
             {
@@ -71,7 +73,7 @@ jobs:
           ' .env.prod.raw > .env.prod
           rm -f .env.prod.raw
 
-          required_keys='SPRING_PROFILES_ACTIVE SUPABASE_URL SUPABASE_PUBLISHABLE_KEY ALLOWED_ORIGINS PORT API_BIND_ADDRESS API_PORT CONVERSION_MAX_CONCURRENT'
+          required_keys='SPRING_PROFILES_ACTIVE SUPABASE_URL SUPABASE_PUBLISHABLE_KEY ALLOWED_ORIGINS PORT API_BIND_ADDRESS API_PORT CONVERSION_MAX_CONCURRENT GRAFANA_ADMIN_USER GRAFANA_ADMIN_PASSWORD'
           for key in $required_keys; do
             if ! grep -q "^${key}=." .env.prod; then
               echo "Missing required key in ENV_FILE: ${key}" >&2

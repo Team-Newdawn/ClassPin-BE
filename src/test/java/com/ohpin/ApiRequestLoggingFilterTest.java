@@ -2,7 +2,6 @@ package com.ohpin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ohpin.shared.logging.ApiRequestLoggingFilter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletResponse;
@@ -15,10 +14,10 @@ import org.springframework.mock.web.MockHttpServletResponse;
 
 @ExtendWith(OutputCaptureExtension.class)
 class ApiRequestLoggingFilterTest {
-  private final ApiRequestLoggingFilter filter = new ApiRequestLoggingFilter(new ObjectMapper());
+  private final ApiRequestLoggingFilter filter = new ApiRequestLoggingFilter();
 
   @Test
-  void logsSuccessfulJsonApiRequestAtInfoAndRedactsSecrets(CapturedOutput output)
+  void logsSuccessfulApiRequestWithoutLoggingRequestBody(CapturedOutput output)
       throws Exception {
     var request = jsonRequest();
     var response = new MockHttpServletResponse();
@@ -27,20 +26,23 @@ class ApiRequestLoggingFilterTest {
 
     assertThat(output)
         .contains("INFO")
-        .contains("API method=POST path=/api/instructor/folders status=200")
-        .contains("\"name\":\"Course\"")
-        .contains("\"accessToken\":\"[REDACTED]\"")
+        .contains("event.name=\"http.server.request.completed\"")
+        .contains("http.request.method=\"POST\"")
+        .contains("http.route=\"/api/instructor/folders\"")
+        .contains("http.response.status_code=\"200\"")
+        .doesNotContain("Course")
         .doesNotContain("do-not-log")
         .doesNotContain("Bearer credential");
+    assertThat(response.getHeader("X-Request-ID")).matches("[a-f0-9-]{36}");
   }
 
   @Test
-  void logsClientErrorsAtWarn(CapturedOutput output) throws Exception {
+  void logsClientErrorsAtInfo(CapturedOutput output) throws Exception {
     filter.doFilter(jsonRequest(), new MockHttpServletResponse(), consumingChain(400));
 
     assertThat(output)
-        .contains("WARN")
-        .contains("API method=POST path=/api/instructor/folders status=400");
+        .contains("INFO")
+        .contains("http.response.status_code=\"400\"");
   }
 
   @Test
@@ -49,7 +51,7 @@ class ApiRequestLoggingFilterTest {
 
     assertThat(output)
         .contains("ERROR")
-        .contains("API method=POST path=/api/instructor/folders status=500");
+        .contains("http.response.status_code=\"500\"");
   }
 
   private MockHttpServletRequest jsonRequest() {

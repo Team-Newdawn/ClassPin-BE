@@ -66,16 +66,13 @@ cp .env.prod.example .env.prod
 # 기존 운영 Supabase URL/publishable key, 프론트 HTTPS origin을 입력
 # 먼저 아래 새 migration을 기존 Supabase에 적용한 후 BE -> FE 순서로 배포
 docker build -t ohpin-be:latest .
-# 첫 실행 때만 관리자 비밀번호를 만들고, 이후 재시작에도 같은 값을 사용합니다.
-if [[ ! -s .grafana-admin-password ]]; then (umask 077; openssl rand -hex 32 > .grafana-admin-password); fi
-export GRAFANA_ADMIN_PASSWORD="$(cat .grafana-admin-password)"
 docker compose -f compose.yml -f compose.observability.yml --env-file .env.prod up --no-build -d
 curl http://127.0.0.1:8083/actuator/health
 ```
 
 - API는 `127.0.0.1:8082`, Actuator 관리 포트는 `127.0.0.1:8083`에만 바인딩됩니다.
   Nginx는 API 포트만 프록시하고 관리 포트는 외부에 공개하지 마세요.
-- Prometheus, Loki, Alloy, Grafana가 함께 실행됩니다. Grafana는 `127.0.0.1:3000`에만 바인딩되어 SSH 터널로 접속합니다.
+- Prometheus, Loki, Alloy, Grafana가 함께 실행됩니다. Grafana는 `127.0.0.1:3000`에만 바인딩되고 Nginx의 `monitor-ohpin.newdawn.co.kr` 프록시를 통해 HTTPS로 접속합니다.
 - prod 프로필은 Supabase HTTPS URL과 명시적인 `ALLOWED_ORIGINS`가 필수입니다.
 - `.env.prod`는 이미지에 포함되지 않습니다. 배포 시스템 환경변수/secret manager로도 주입할 수 있습니다.
 - 이미지는 JUnit 테스트와 JAR 빌드를 수행하고, Java 21 JRE·LibreOffice·Poppler·한글 폰트를 포함합니다.
@@ -98,6 +95,8 @@ Repository Actions secrets에는 다음 값을 설정합니다.
 - `EC2_USER`: SSH 사용자명
 - `EC2_SSH_KEY`: PEM 개인 키 전체 내용
 - `ENV_FILE`: `.env.prod.example` 형식의 운영 환경변수 전체 내용
+
+`ENV_FILE`에는 `GRAFANA_ADMIN_USER`와 `GRAFANA_ADMIN_PASSWORD`도 포함해야 합니다. 비밀번호는 이 secret에만 저장하고 저장소에는 기록하지 마세요.
 
 `ENV_FILE`에는 Markdown 링크가 아닌 원문 URL을 사용합니다. 백엔드는 사용자 access token과 publishable key로
 Supabase RLS를 통과하므로 `SUPABASE_SECRET_KEY`와 `SUPABASE_JWKS_URL`은 배포 대상에 포함하지 않습니다.
