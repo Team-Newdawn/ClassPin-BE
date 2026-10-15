@@ -34,6 +34,9 @@ services:
   alloy:
     image: grafana/alloy:v1.20.1
     container_name: ohpin-alloy
+    user: "473:473"
+    group_add:
+      - "${DOCKER_GID:-0}"
     command:
       - run
       - --server.http.listen-addr=0.0.0.0:12345
@@ -79,14 +82,15 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set Grafana password in the deployment environment}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_SERVER_ROOT_URL: https://monitor-ohpin.newdawn.co.kr/
+      GF_PLUGINS_PREINSTALL_AUTO_UPDATE: "false"
     ports:
-      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+      - "127.0.0.1:${GRAFANA_PORT:-3003}:3000"
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
     restart: unless-stopped
-    mem_limit: 256m
+    mem_limit: 512m
     cpus: 0.20
     depends_on:
       - prometheus

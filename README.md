@@ -72,7 +72,7 @@ curl http://127.0.0.1:8083/actuator/health
 
 - API는 `127.0.0.1:8082`, Actuator 관리 포트는 `127.0.0.1:8083`에만 바인딩됩니다.
   Nginx는 API 포트만 프록시하고 관리 포트는 외부에 공개하지 마세요.
-- Prometheus, Loki, Alloy, Grafana가 함께 실행됩니다. Grafana는 `127.0.0.1:3000`에만 바인딩되고 Nginx의 `monitor-ohpin.newdawn.co.kr` 프록시를 통해 HTTPS로 접속합니다.
+- Prometheus, Loki, Alloy, Grafana가 함께 실행됩니다. Grafana는 `127.0.0.1:3003`에만 바인딩되고 Nginx의 `monitor-ohpin.newdawn.co.kr` 프록시를 통해 HTTPS로 접속합니다.
 - prod 프로필은 Supabase HTTPS URL과 명시적인 `ALLOWED_ORIGINS`가 필수입니다.
 - `.env.prod`는 이미지에 포함되지 않습니다. 배포 시스템 환경변수/secret manager로도 주입할 수 있습니다.
 - 이미지는 JUnit 테스트와 JAR 빌드를 수행하고, Java 21 JRE·LibreOffice·Poppler·한글 폰트를 포함합니다.

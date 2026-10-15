@@ -34,6 +34,7 @@ fi
 previous_image="$(docker image inspect --format '{{.Id}}' "${image_name}:latest" 2>/dev/null || true)"
 
 compose=(docker compose -f compose.yml -f compose.observability.yml --env-file .env.prod)
+export DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
 
 gzip -dc "$image_archive" | docker load
 docker tag "${image_name}:${image_tag}" "${image_name}:latest"
