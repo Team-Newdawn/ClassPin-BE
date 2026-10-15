@@ -1,0 +1,99 @@
+services:
+  api:
+    expose:
+      - "8081"
+
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    container_name: ohpin-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.25
+
+  loki:
+    image: grafana/loki:3.7.7
+    container_name: ohpin-loki
+    command:
+      - -config.file=/etc/loki/config.yml
+    volumes:
+      - ./monitoring/loki/config.yml:/etc/loki/config.yml:ro
+      - loki-data:/loki
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.20
+
+  alloy:
+    image: grafana/alloy:v1.20.1
+    container_name: ohpin-alloy
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log/nginx:/var/log/nginx:ro
+      - alloy-data:/var/lib/alloy/data
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 96m
+    cpus: 0.10
+    depends_on:
+      - loki
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.60.6
+    container_name: ohpin-cadvisor
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=30s
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.10
+
+  grafana:
+    image: grafana/grafana:13.2.2
+    container_name: ohpin-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Grafana password must be provided by the deployment script}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: http://localhost:${GRAFANA_PORT:-3000}
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.20
+    depends_on:
+      - prometheus
+      - loki
+
+volumes:
+  prometheus-data:
+  loki-data:
+  alloy-data:
+  grafana-data:

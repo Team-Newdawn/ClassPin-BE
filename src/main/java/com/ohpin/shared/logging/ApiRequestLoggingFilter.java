@@ -1,35 +1,24 @@
 package com.ohpin.shared.logging;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ohpin.shared.security.Caller;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Locale;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.slf4j.*;
+import org.slf4j.event.Level;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.util.ContentCachingRequestWrapper;
 
 public final class ApiRequestLoggingFilter extends OncePerRequestFilter {
   private static final Logger log = LoggerFactory.getLogger(ApiRequestLoggingFilter.class);
-  private static final int MAX_CAPTURE_BYTES = 64 * 1024;
-  private static final int MAX_LOG_CHARS = 4 * 1024;
-  private static final String REQUEST_ID = "requestId";
-  private static final java.util.regex.Pattern SAFE_REQUEST_ID =
-      java.util.regex.Pattern.compile("(?:[a-fA-F0-9]{32}|[a-fA-F0-9]{8}-(?:[a-fA-F0-9]{4}-){3}[a-fA-F0-9]{12})");
-
-  private final ObjectMapper mapper;
-
-  public ApiRequestLoggingFilter(ObjectMapper mapper) {
-    this.mapper = mapper;
-  }
+  private static final String REQUEST_ID = "request.id";
+  private static final long SLOW_REQUEST_MS = 1_000;
+  private static final Pattern SAFE_REQUEST_ID =
+      Pattern.compile("(?:[a-fA-F0-9]{32}|[a-fA-F0-9]{8}-(?:[a-fA-F0-9]{4}-){3}[a-fA-F0-9]{12})");
+  private static final Pattern UUID_PATH_SEGMENT =
+      Pattern.compile("/[a-fA-F0-9]{8}-(?:[a-fA-F0-9]{4}-){3}[a-fA-F0-9]{12}(?=/|$)");
 
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -41,7 +30,6 @@ public final class ApiRequestLoggingFilter extends OncePerRequestFilter {
   protected void doFilterInternal(
       HttpServletRequest request, HttpServletResponse response, FilterChain chain)
       throws ServletException, IOException {
-    var wrapped = new ContentCachingRequestWrapper(request, MAX_CAPTURE_BYTES);
     String requestId = requestId(request.getHeader("X-Request-ID"));
     String previousRequestId = MDC.get(REQUEST_ID);
     MDC.put(REQUEST_ID, requestId);
@@ -49,34 +37,39 @@ public final class ApiRequestLoggingFilter extends OncePerRequestFilter {
     long started = System.nanoTime();
     Throwable failure = null;
     try {
-      chain.doFilter(wrapped, response);
+      chain.doFilter(request, response);
     } catch (IOException | ServletException | RuntimeException e) {
       failure = e;
       throw e;
     } finally {
-      int status = failure == null ? response.getStatus() : 500;
-      String message =
-          "API method={} path={} status={} durationMs={} userId={} request={} requestId={}";
-      Object[] values = {
-        request.getMethod(),
-        safePath(request),
-        status,
-        (System.nanoTime() - started) / 1_000_000,
-        userId(),
-        requestBody(wrapped),
-        requestId
-      };
-      if (failure != null) {
-        Object[] valuesWithFailure = Arrays.copyOf(values, values.length + 1);
-        valuesWithFailure[values.length] = failure;
-        log.error(message, valuesWithFailure);
+      long durationMs = (System.nanoTime() - started) / 1_000_000;
+      boolean clientDisconnected = isClientDisconnect(failure);
+      int status = failure == null || clientDisconnected ? response.getStatus() : 500;
+      Level level = level(status, durationMs, failure, clientDisconnected);
+      try {
+        var event = log.atLevel(level)
+            .addKeyValue("event.name", clientDisconnected ? "http.server.client_disconnected" : "http.server.request.completed")
+            .addKeyValue("http.request.method", request.getMethod())
+            .addKeyValue("http.route", route(request.getRequestURI()))
+            .addKeyValue("http.response.status_code", status)
+            .addKeyValue("event.duration_ms", durationMs)
+            .addKeyValue("user.type", userType());
+        if (failure != null && !clientDisconnected) {
+          event.addKeyValue("error.type", failure.getClass().getSimpleName()).setCause(failure);
+        }
+        event.log(clientDisconnected ? "Client disconnected before response completed" : "HTTP request completed");
+      } finally {
+        if (previousRequestId == null) MDC.remove(REQUEST_ID);
+        else MDC.put(REQUEST_ID, previousRequestId);
       }
-      else if (status >= 500) log.error(message, values);
-      else if (status >= 400) log.warn(message, values);
-      else log.info(message, values);
-      if (previousRequestId == null) MDC.remove(REQUEST_ID);
-      else MDC.put(REQUEST_ID, previousRequestId);
     }
+  }
+
+  private Level level(int status, long durationMs, Throwable failure, boolean clientDisconnected) {
+    if (clientDisconnected) return Level.INFO;
+    if (failure != null || status >= 500) return Level.ERROR;
+    if (status == 429 || durationMs >= SLOW_REQUEST_MS) return Level.WARN;
+    return Level.INFO;
   }
 
   private String requestId(String provided) {
@@ -85,60 +78,28 @@ public final class ApiRequestLoggingFilter extends OncePerRequestFilter {
         : UUID.randomUUID().toString();
   }
 
-  private String safePath(HttpServletRequest request) {
-    String path = request.getRequestURI().replace('\r', '_').replace('\n', '_');
-    return path.length() <= 1_024 ? path : path.substring(0, 1_024) + "…";
+  private String route(String path) {
+    String normalized = UUID_PATH_SEGMENT.matcher(path).replaceAll("/{id}");
+    return normalized.replaceFirst("^(/api/participant/join/)[A-Za-z0-9]{6,10}$", "$1{code}");
   }
 
-  private String userId() {
+  private String userType() {
     var authentication = SecurityContextHolder.getContext().getAuthentication();
-    return authentication != null && authentication.getPrincipal() instanceof Caller caller
-        ? caller.id().toString()
-        : "anonymous";
+    if (authentication == null || !(authentication.getPrincipal() instanceof Caller caller))
+      return "anonymous";
+    return caller.instructor() ? "instructor" : "participant";
   }
 
-  private String requestBody(ContentCachingRequestWrapper request) {
-    byte[] content = request.getContentAsByteArray();
-    if (content.length == 0) return "-";
-    String contentType = request.getContentType();
-    if (contentType == null
-        || !(contentType.equalsIgnoreCase("application/json")
-            || contentType.toLowerCase(Locale.ROOT).contains("+json"))) {
-      return "<non-json bytes=" + request.getContentLengthLong() + ">";
+  private boolean isClientDisconnect(Throwable error) {
+    for (Throwable current = error; current != null; current = current.getCause()) {
+      String name = current.getClass().getSimpleName();
+      String message = current.getMessage();
+      if (name.equals("ClientAbortException")
+          || name.equals("AsyncRequestNotUsableException")
+          || (current instanceof IOException
+              && message != null
+              && message.toLowerCase(java.util.Locale.ROOT).contains("broken pipe"))) return true;
     }
-    if (content.length >= MAX_CAPTURE_BYTES) return "<json omitted: body exceeds 64 KiB>";
-    try {
-      JsonNode sanitized = sanitize(mapper.readTree(new String(content, StandardCharsets.UTF_8)));
-      String value = mapper.writeValueAsString(sanitized);
-      return value.length() <= MAX_LOG_CHARS
-          ? value
-          : value.substring(0, MAX_LOG_CHARS) + "…<truncated>";
-    } catch (Exception ignored) {
-      return "<invalid-json>";
-    }
-  }
-
-  private JsonNode sanitize(JsonNode value) {
-    if (value instanceof ObjectNode object) {
-      var fields = object.properties().iterator();
-      while (fields.hasNext()) {
-        var field = fields.next();
-        if (sensitive(field.getKey())) object.put(field.getKey(), "[REDACTED]");
-        else sanitize(field.getValue());
-      }
-    } else if (value instanceof ArrayNode array) {
-      array.forEach(this::sanitize);
-    }
-    return value;
-  }
-
-  private boolean sensitive(String key) {
-    String normalized = key.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
-    return normalized.contains("password")
-        || normalized.contains("token")
-        || normalized.contains("secret")
-        || normalized.contains("apikey")
-        || normalized.contains("authorization")
-        || normalized.contains("credential");
+    return false;
   }
 }

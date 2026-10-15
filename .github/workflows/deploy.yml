@@ -61,6 +61,7 @@ jobs:
               allowed["PORT"] = 1
               allowed["API_BIND_ADDRESS"] = 1
               allowed["API_PORT"] = 1
+              allowed["MANAGEMENT_PORT"] = 1
               allowed["CONVERSION_MAX_CONCURRENT"] = 1
             }
             {
@@ -110,8 +111,9 @@ jobs:
           remote="${EC2_USER}@${EC2_HOST}"
           ssh -i "$HOME/.ssh/ohpin-deploy-key" "$remote" "mkdir -p '$deploy_dir' && chmod 700 '$deploy_dir'"
           scp -i "$HOME/.ssh/ohpin-deploy-key" \
-            compose.yml .env.prod ohpin-be-image.tar.gz scripts/deploy-production.sh \
+            compose.yml compose.observability.yml .env.prod ohpin-be-image.tar.gz scripts/deploy-production.sh \
             "${remote}:${deploy_dir}/"
+          scp -i "$HOME/.ssh/ohpin-deploy-key" -r monitoring "${remote}:${deploy_dir}/"
           ssh -i "$HOME/.ssh/ohpin-deploy-key" "$remote" "chmod 600 '$deploy_dir/.env.prod'"
 
       - name: Activate release

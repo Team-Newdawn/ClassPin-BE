@@ -6,3 +6,21 @@ server:
   error:
     include-message: never
     include-stacktrace: never
+logging:
+  level:
+    root: INFO
+    org.springframework.web: WARN
+    org.springframework.security: WARN
+    org.apache.tomcat: WARN
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        name: ohpin-be
+        environment: production
+    json:
+      stacktrace:
+        root: first
+        max-length: 8192
+        max-throwable-depth: 32

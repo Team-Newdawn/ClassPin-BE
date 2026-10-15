@@ -66,13 +66,16 @@ cp .env.prod.example .env.prod
 # 기존 운영 Supabase URL/publishable key, 프론트 HTTPS origin을 입력
 # 먼저 아래 새 migration을 기존 Supabase에 적용한 후 BE -> FE 순서로 배포
 docker build -t ohpin-be:latest .
-docker compose --env-file .env.prod up --no-build -d
-docker compose logs -f api
-curl http://127.0.0.1:8082/actuator/health
+# 첫 실행 때만 관리자 비밀번호를 만들고, 이후 재시작에도 같은 값을 사용합니다.
+if [[ ! -s .grafana-admin-password ]]; then (umask 077; openssl rand -hex 32 > .grafana-admin-password); fi
+export GRAFANA_ADMIN_PASSWORD="$(cat .grafana-admin-password)"
+docker compose -f compose.yml -f compose.observability.yml --env-file .env.prod up --no-build -d
+curl http://127.0.0.1:8083/actuator/health
 ```
 
-- 기본 공개 포트는 `127.0.0.1:8082`입니다. HTTPS reverse proxy를 앞에 연결하세요.
-  외부 바인딩이 필요하면 `API_BIND_ADDRESS`, 외부 포트는 `API_PORT`를 설정합니다.
+- API는 `127.0.0.1:8082`, Actuator 관리 포트는 `127.0.0.1:8083`에만 바인딩됩니다.
+  Nginx는 API 포트만 프록시하고 관리 포트는 외부에 공개하지 마세요.
+- Prometheus, Loki, Alloy, Grafana가 함께 실행됩니다. Grafana는 `127.0.0.1:3000`에만 바인딩되어 SSH 터널로 접속합니다.
 - prod 프로필은 Supabase HTTPS URL과 명시적인 `ALLOWED_ORIGINS`가 필수입니다.
 - `.env.prod`는 이미지에 포함되지 않습니다. 배포 시스템 환경변수/secret manager로도 주입할 수 있습니다.
 - 이미지는 JUnit 테스트와 JAR 빌드를 수행하고, Java 21 JRE·LibreOffice·Poppler·한글 폰트를 포함합니다.
@@ -86,7 +89,8 @@ curl http://127.0.0.1:8082/actuator/health
 
 `.github/workflows/deploy.yml`은 `main` 브랜치 push와 GitHub Actions의 **Run workflow** 버튼으로 실행됩니다.
 JUnit 테스트와 Docker 이미지 빌드가 성공하면 이미지를 EC2의 `/home/<EC2_USER>/ohpin-be`로 전송하고,
-`/actuator/health`가 정상일 때 배포를 완료합니다. 새 컨테이너가 비정상이면 직전 이미지로 복구합니다.
+관리 포트의 `/actuator/health`가 정상일 때 배포를 완료합니다. 새 컨테이너가 비정상이면 직전 이미지로 복구합니다.
+모니터링 대시보드와 로그 수집은 [`docs/observability.md`](docs/observability.md)를 참고하세요.
 
 Repository Actions secrets에는 다음 값을 설정합니다.
 
