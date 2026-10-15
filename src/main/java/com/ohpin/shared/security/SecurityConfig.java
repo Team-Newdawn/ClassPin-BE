@@ -2,7 +2,6 @@ package com.ohpin.shared.security;
 
 import com.ohpin.shared.infrastructure.SupabaseGateway;
 import com.ohpin.shared.logging.ApiRequestLoggingFilter;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.DispatcherType;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,14 +18,13 @@ public class SecurityConfig {
   SecurityFilterChain security(
       HttpSecurity http,
       SupabaseGateway gateway,
-      ObjectMapper mapper,
       @Value("${ohpin.allowed-origins}") List<String> origins,
       org.springframework.core.env.Environment environment)
       throws Exception {
     var cors = new CorsConfiguration();
     cors.setAllowedOrigins(origins);
     cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-    cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-File-Name"));
+    cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-File-Name", "X-Request-ID"));
     cors.setMaxAge(3600L);
     var source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", cors);
@@ -37,7 +35,7 @@ public class SecurityConfig {
             a ->
                 a.dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR)
                     .permitAll()
-                    .requestMatchers("/actuator/health", "/actuator/health/**")
+                    .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/prometheus")
                     .permitAll()
                     .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**")
                     .permitAll()
@@ -72,7 +70,7 @@ public class SecurityConfig {
         .addFilterBefore(
             new SupabaseAuthenticationFilter(gateway), UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(
-            new ApiRequestLoggingFilter(mapper), SupabaseAuthenticationFilter.class)
+            new ApiRequestLoggingFilter(), SupabaseAuthenticationFilter.class)
         .build();
   }
 }

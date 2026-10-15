@@ -15,6 +15,8 @@ fi
 
 api_bind_address="$(awk -F= '$1 == "API_BIND_ADDRESS" { print substr($0, index($0, "=") + 1) }' .env.prod | tail -n 1)"
 api_port="$(awk -F= '$1 == "API_PORT" { print substr($0, index($0, "=") + 1) }' .env.prod | tail -n 1)"
+management_port="$(awk -F= '$1 == "MANAGEMENT_PORT" { print substr($0, index($0, "=") + 1) }' .env.prod | tail -n 1)"
+management_port="${management_port:-8083}"
 
 if [[ "$api_bind_address" != "127.0.0.1" ]]; then
   echo "API_BIND_ADDRESS must remain 127.0.0.1 behind Nginx" >&2
@@ -24,14 +26,28 @@ if [[ ! "$api_port" =~ ^[0-9]+$ ]] || ((api_port < 1 || api_port > 65535)); then
   echo "API_PORT must be a valid TCP port" >&2
   exit 1
 fi
+if [[ ! "$management_port" =~ ^[0-9]+$ ]] || ((management_port < 1 || management_port > 65535)); then
+  echo "MANAGEMENT_PORT must be a valid TCP port" >&2
+  exit 1
+fi
 
 previous_image="$(docker image inspect --format '{{.Id}}' "${image_name}:latest" 2>/dev/null || true)"
 
+password_file=".grafana-admin-password"
+if [[ ! -s "$password_file" ]]; then
+  umask 077
+  openssl rand -hex 32 > "$password_file"
+fi
+chmod 600 "$password_file"
+export GRAFANA_ADMIN_PASSWORD="$(cat "$password_file")"
+compose=(docker compose -f compose.yml -f compose.observability.yml --env-file .env.prod)
+
 gzip -dc "$image_archive" | docker load
 docker tag "${image_name}:${image_tag}" "${image_name}:latest"
-docker compose --env-file .env.prod up -d --no-build --force-recreate api
+"${compose[@]}" up -d --no-build --force-recreate api
+"${compose[@]}" up -d --no-build prometheus loki grafana alloy cadvisor
 
-health_url="http://${api_bind_address}:${api_port}/actuator/health"
+health_url="http://127.0.0.1:${management_port}/actuator/health"
 healthy=false
 for _ in $(seq 1 30); do
   if curl --fail --silent --show-error "$health_url" | grep -q '"status":"UP"'; then
@@ -43,18 +59,18 @@ done
 
 if [[ "$healthy" == true ]]; then
   rm -f "$image_archive"
-  docker compose --env-file .env.prod ps
+  "${compose[@]}" ps
   echo "OhPin backend deployment completed: ${image_tag}"
   exit 0
 fi
 
 echo "New release failed its health check" >&2
-docker compose --env-file .env.prod logs --no-color --tail=200 api >&2 || true
+"${compose[@]}" logs --no-color --tail=200 api >&2 || true
 
 if [[ -n "$previous_image" ]]; then
   echo "Restoring previous image ${previous_image}" >&2
   docker tag "$previous_image" "${image_name}:latest"
-  docker compose --env-file .env.prod up -d --no-build --force-recreate api
+  "${compose[@]}" up -d --no-build --force-recreate api
 fi
 
 exit 1

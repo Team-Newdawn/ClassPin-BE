@@ -6,10 +6,14 @@ import com.ohpin.shared.security.Caller;
 import java.io.*;
 import java.net.http.*;
 import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.slf4j.event.Level;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -24,13 +28,15 @@ public class SupabaseGateway {
           .build();
   private final ObjectMapper mapper;
   private final SupabaseProperties properties;
+  private final MeterRegistry meterRegistry;
 
   @org.springframework.beans.factory.annotation.Value("${ohpin.supabase.public-url}")
   private String publicUrl;
 
-  public SupabaseGateway(ObjectMapper mapper, SupabaseProperties properties) {
+  public SupabaseGateway(ObjectMapper mapper, SupabaseProperties properties, MeterRegistry meterRegistry) {
     this.mapper = mapper;
     this.properties = properties;
+    this.meterRegistry = meterRegistry;
   }
 
   private HttpRequest.Builder request(String token, String path, Map<String, String> query) {
@@ -66,28 +72,63 @@ public class SupabaseGateway {
       return res.body().isBlank() ? mapper.nullNode() : mapper.readTree(res.body());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      log.error("Supabase request interrupted requestId={} method={} path={} durationMs={}",
-          requestId(), method, path, elapsedMs(started));
+      logTransportFailure(method, path, "interrupted", started, e);
       throw new ApiFailure(503, "Upstream request interrupted");
     } catch (IOException e) {
-      log.error("Supabase request failed requestId={} method={} path={} durationMs={} cause={}",
-          requestId(), method, path, elapsedMs(started), e.getClass().getSimpleName(), e);
+      logTransportFailure(method, path, "io_error", started, e);
       throw new ApiFailure(502, "Supabase is unavailable");
     }
   }
 
   private void logUpstream(String method, String path, int status, long started) {
     long durationMs = elapsedMs(started);
-    if (status >= 500) {
-      log.error("Supabase response requestId={} method={} path={} status={} durationMs={}",
-          requestId(), method, path, status, durationMs);
-    } else if (status >= 400) {
-      log.warn("Supabase response requestId={} method={} path={} status={} durationMs={}",
-          requestId(), method, path, status, durationMs);
-    } else if (durationMs >= SLOW_REQUEST_MS) {
-      log.warn("Slow Supabase response requestId={} method={} path={} status={} durationMs={}",
-          requestId(), method, path, status, durationMs);
+    recordMetric(method, path, Integer.toString(status), durationMs);
+    if (status >= 500 || status >= 400 || durationMs >= SLOW_REQUEST_MS) {
+      Level level = status >= 500
+          ? Level.ERROR
+          : status == 429 || durationMs >= SLOW_REQUEST_MS ? Level.WARN : Level.INFO;
+      log.atLevel(level)
+          .addKeyValue("event.name", "dependency.http.completed")
+          .addKeyValue("dependency.name", "supabase")
+          .addKeyValue("http.request.method", method)
+          .addKeyValue("http.route", metricEndpoint(path))
+          .addKeyValue("http.response.status_code", status)
+          .addKeyValue("event.duration_ms", durationMs)
+          .log("Supabase request completed");
     }
+  }
+
+  private void logTransportFailure(String method, String path, String outcome, long started, Exception error) {
+    long durationMs = elapsedMs(started);
+    recordMetric(method, path, outcome, durationMs);
+    log.atError()
+        .addKeyValue("event.name", "dependency.http.failed")
+        .addKeyValue("request.id", requestId())
+        .addKeyValue("dependency.name", "supabase")
+        .addKeyValue("http.request.method", method)
+        .addKeyValue("http.route", metricEndpoint(path))
+        .addKeyValue("event.duration_ms", durationMs)
+        .addKeyValue("error.type", error.getClass().getSimpleName())
+        .setCause(error)
+        .log("Supabase request failed");
+  }
+
+  private void recordMetric(String method, String path, String status, long durationMs) {
+    Timer.builder("ohpin.supabase.request")
+        .description("HTTP requests made to Supabase")
+        .tag("method", method)
+        .tag("endpoint", metricEndpoint(path))
+        .tag("status", status)
+        .register(meterRegistry)
+        .record(durationMs, TimeUnit.MILLISECONDS);
+  }
+
+  private String metricEndpoint(String path) {
+    if (path.equals("/auth/v1/user")) return "auth.user";
+    if (path.startsWith("/rest/v1/rpc/")) return "rpc." + path.substring("/rest/v1/rpc/".length());
+    if (path.startsWith("/rest/v1/")) return "rest." + path.substring("/rest/v1/".length());
+    if (path.startsWith("/storage/v1/")) return "storage.object";
+    return "other";
   }
 
   private long elapsedMs(long started) {
@@ -95,7 +136,7 @@ public class SupabaseGateway {
   }
 
   private String requestId() {
-    return Objects.requireNonNullElse(MDC.get("requestId"), "-");
+    return Objects.requireNonNullElse(MDC.get("request.id"), "-");
   }
 
   public JsonNode get(Caller c, String table, Map<String, String> query) {
@@ -148,9 +189,11 @@ public class SupabaseGateway {
                   .GET()
                   .build(),
               HttpResponse.BodyHandlers.ofInputStream());
-      logUpstream("GET", endpoint, res.statusCode(), started);
       try (var input = res.body()) {
-        if (res.statusCode() >= 400) throw failure(res.statusCode());
+        if (res.statusCode() >= 400) {
+          logUpstream("GET", endpoint, res.statusCode(), started);
+          throw failure(res.statusCode());
+        }
         try (var output = java.nio.file.Files.newOutputStream(destination)) {
           byte[] buffer = new byte[64 * 1024];
           long bytes = 0;
@@ -162,14 +205,13 @@ public class SupabaseGateway {
           }
         }
       }
+      logUpstream("GET", endpoint, res.statusCode(), started);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      log.error("Supabase request interrupted requestId={} method=GET path={} durationMs={}",
-          requestId(), endpoint, elapsedMs(started));
+      logTransportFailure("GET", endpoint, "interrupted", started, e);
       throw new ApiFailure(503, "Download interrupted");
     } catch (IOException e) {
-      log.error("Supabase request failed requestId={} method=GET path={} durationMs={} cause={}",
-          requestId(), endpoint, elapsedMs(started), e.getClass().getSimpleName(), e);
+      logTransportFailure("GET", endpoint, "io_error", started, e);
       throw new ApiFailure(502, "Source download failed");
     }
   }
@@ -190,12 +232,10 @@ public class SupabaseGateway {
       if (res.statusCode() >= 400) throw failure(res.statusCode());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      log.error("Supabase request interrupted requestId={} method=POST path={} durationMs={}",
-          requestId(), endpoint, elapsedMs(started));
+      logTransportFailure("POST", endpoint, "interrupted", started, e);
       throw new ApiFailure(503, "Upload interrupted");
     } catch (IOException e) {
-      log.error("Supabase request failed requestId={} method=POST path={} durationMs={} cause={}",
-          requestId(), endpoint, elapsedMs(started), e.getClass().getSimpleName(), e);
+      logTransportFailure("POST", endpoint, "io_error", started, e);
       throw new ApiFailure(502, "Slide upload failed");
     }
   }

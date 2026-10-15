@@ -10,6 +10,7 @@ services:
       SUPABASE_PUBLIC_URL: http://127.0.0.1:56321
     ports:
       - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8081:8081"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     init: true

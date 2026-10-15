@@ -5,6 +5,7 @@ build/
 out/
 .env*
 !.env.*.example
+.grafana-admin-password
 node_modules/
 supabase/.temp/
 supabase/.branches/
