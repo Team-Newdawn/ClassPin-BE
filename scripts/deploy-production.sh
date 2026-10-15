@@ -33,13 +33,6 @@ fi
 
 previous_image="$(docker image inspect --format '{{.Id}}' "${image_name}:latest" 2>/dev/null || true)"
 
-password_file=".grafana-admin-password"
-if [[ ! -s "$password_file" ]]; then
-  umask 077
-  openssl rand -hex 32 > "$password_file"
-fi
-chmod 600 "$password_file"
-export GRAFANA_ADMIN_PASSWORD="$(cat "$password_file")"
 compose=(docker compose -f compose.yml -f compose.observability.yml --env-file .env.prod)
 
 gzip -dc "$image_archive" | docker load

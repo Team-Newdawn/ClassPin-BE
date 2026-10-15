@@ -75,10 +75,10 @@ services:
     image: grafana/grafana:13.2.2
     container_name: ohpin-grafana
     environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Grafana password must be provided by the deployment script}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-newdawn}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set Grafana password in the deployment environment}
       GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_SERVER_ROOT_URL: http://localhost:${GRAFANA_PORT:-3000}
+      GF_SERVER_ROOT_URL: https://monitor-ohpin.newdawn.co.kr/
     ports:
       - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
     volumes:
