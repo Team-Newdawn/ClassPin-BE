@@ -34,7 +34,13 @@ fi
 previous_image="$(docker image inspect --format '{{.Id}}' "${image_name}:latest" 2>/dev/null || true)"
 
 compose=(docker compose -f compose.yml -f compose.observability.yml --env-file .env.prod)
+docker network create ohpin >/dev/null 2>&1 || docker network inspect ohpin >/dev/null
 export DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
+
+# Keep latest and images used by containers so the previous release remains available for rollback.
+docker image ls "$image_name" --format '{{.Repository}}:{{.Tag}}' | grep -vx "${image_name}:latest" \
+  | xargs -r docker rmi >/dev/null 2>&1 || true
+docker image prune -f >/dev/null
 
 gzip -dc "$image_archive" | docker load
 docker tag "${image_name}:${image_tag}" "${image_name}:latest"
