@@ -42,3 +42,20 @@ groups:
         annotations:
           summary: Supabase upstream p95 latency is above one second
           description: At least one Supabase endpoint has exceeded one second p95 latency for five minutes.
+
+      - alert: OhPinContainerMemoryHigh
+        expr: |
+          container_memory_working_set_bytes{name=~"ohpin-fe|ohpin-be"}
+          / clamp_min(container_spec_memory_limit_bytes{name=~"ohpin-fe|ohpin-be"}, 1) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: OhPin container memory is above 85% of its limit
+
+      - alert: OhPinContainerOom
+        expr: increase(container_oom_events_total{name=~"ohpin-fe|ohpin-be"}[5m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: An OhPin container hit its memory limit

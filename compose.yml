@@ -8,6 +8,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: prod
       PORT: 8080
+      CONVERSION_MAX_CONCURRENT: 1
     ports:
       - "${API_BIND_ADDRESS:-127.0.0.1}:${API_PORT:-8082}:8080"
       - "127.0.0.1:${MANAGEMENT_PORT:-8083}:8081"
@@ -17,8 +18,10 @@ services:
     init: true
     stop_grace_period: 45s
     read_only: true
-    tmpfs:
-      - /tmp:size=3g,mode=1777
+    mem_limit: 1g
+    volumes:
+      - ohpin-tmp:/tmp
+    networks: [default, ohpin]
     cap_drop:
       - ALL
     security_opt:
@@ -28,3 +31,10 @@ services:
       options:
         max-size: 10m
         max-file: "3"
+
+networks:
+  ohpin:
+    external: true
+
+volumes:
+  ohpin-tmp:
