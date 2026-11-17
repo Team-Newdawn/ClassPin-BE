@@ -2,11 +2,14 @@ package com.ohpin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import com.ohpin.shared.logging.ApiRequestLoggingFilter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -22,7 +25,14 @@ class ApiRequestLoggingFilterTest {
     var request = jsonRequest();
     var response = new MockHttpServletResponse();
 
-    filter.doFilter(request, response, consumingChain(200));
+    var logger = (Logger) LoggerFactory.getLogger(ApiRequestLoggingFilter.class);
+    var previousLevel = logger.getLevel();
+    try {
+      logger.setLevel(Level.DEBUG);
+      filter.doFilter(request, response, consumingChain(200));
+    } finally {
+      logger.setLevel(previousLevel);
+    }
 
     assertThat(output)
         .contains("DEBUG")
