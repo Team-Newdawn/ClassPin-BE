@@ -6,7 +6,11 @@ import com.ohpin.shared.security.Caller;
 import java.util.*;
 
 public interface LectureRepository {
-    JsonNode ownedGraph(Caller c);
+    JsonNode ownedGraph(Caller c, boolean includeQuestions);
+
+    default JsonNode ownedGraph(Caller c) {
+        return ownedGraph(c, true);
+    }
 
     JsonNode liveGraph(Caller c, String column, String value);
 

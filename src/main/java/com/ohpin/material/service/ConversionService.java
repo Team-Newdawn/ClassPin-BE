@@ -61,6 +61,7 @@ public class ConversionService {
             Path workspace = null;
             var uploaded = new ArrayList<String>();
             try {
+                emit(output, Map.of("type", "start"));
                 workspace = Files.createTempDirectory("ohpin-convert-");
                 Path source = workspace.resolve("source" + SourcePath.extension(request.fileName()));
                 storage.download(caller, "course-materials", path, source, SourcePath.MAX_BYTES);

@@ -20,7 +20,11 @@ public class LectureService {
     }
 
     public JsonNode owned(Caller c) {
-        return repository.ownedGraph(c);
+        return owned(c, true);
+    }
+
+    public JsonNode owned(Caller c, boolean includeQuestions) {
+        return repository.ownedGraph(c, includeQuestions);
     }
 
     public AudienceLectureResult join(Caller c, String code) {

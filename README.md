@@ -129,7 +129,7 @@ EC2 사용자는 Docker 및 `docker compose`를 비밀번호 없이 실행할 �
 |---|---|
 | 프로필 | GET `/api/me` |
 | 폴더 | GET/POST `/api/instructor/folders`, PATCH/DELETE `/api/instructor/folders/{id}` |
-| 강의 | GET `/api/instructor/courses`, PATCH `/api/instructor/lectures/{id}` |
+| 강의 | GET `/api/instructor/courses` (`?include=false` omits questions; default includes them), PATCH `/api/instructor/lectures/{id}` |
 | 이동·삭제 | PATCH `/api/instructor/courses/{id}/folder`, DELETE `/api/instructor/courses/{id}` |
 | 자료 | POST `/api/instructor/materials` |
 | 슬라이드 | GET/POST `/api/instructor/versions/{id}/slides`, DELETE `/api/instructor/slides/{id}` |
@@ -140,7 +140,7 @@ EC2 사용자는 Docker 및 `docker compose`를 비밀번호 없이 실행할 �
 | 수정·공감 | PATCH `/api/participant/questions/{id}`, PUT `/api/participant/questions/{id}/reaction` |
 | 답변·해결 | POST `/api/instructor/questions/{id}/answers`, PUT `/api/instructor/questions/{id}/resolved` |
 | 후기 | POST `/api/participant/experience` |
-| 변환 | POST `/api/convert` → NDJSON `meta`, `slide`, `done` 또는 `error` |
+| 변환 | POST `/api/convert` → NDJSON `start`, `meta`, `slide`, `done` 또는 `error` |
 | 정리 재시도 | POST `/api/instructor/storage-cleanup` |
 | 헬스 | GET `/actuator/health`, `/actuator/health/liveness` |
 
