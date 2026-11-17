@@ -25,7 +25,7 @@ class ApiRequestLoggingFilterTest {
     filter.doFilter(request, response, consumingChain(200));
 
     assertThat(output)
-        .contains("INFO")
+        .contains("DEBUG")
         .contains("event.name=\"http.server.request.completed\"")
         .contains("http.request.method=\"POST\"")
         .contains("http.route=\"/api/instructor/folders\"")

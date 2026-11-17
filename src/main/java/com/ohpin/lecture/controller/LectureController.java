@@ -25,8 +25,10 @@ public class LectureController {
     }
 
     @GetMapping("/api/instructor/courses")
-    JsonNode owned(@AuthenticationPrincipal Caller c) {
-        return service.owned(c);
+    JsonNode owned(
+            @AuthenticationPrincipal Caller c,
+            @RequestParam(name = "include", defaultValue = "true") boolean includeQuestions) {
+        return service.owned(c, includeQuestions);
     }
 
     @GetMapping("/api/participant/join/{code}")

@@ -24,14 +24,14 @@ public class SupabaseLectureRepository implements LectureRepository {
     private static final String QUESTIONS =
             "questions(id,lecture_id,slide_id,category,marker,raw_text,status,reaction_count,created_at,region_anchors(kind,coords),answers(body,created_at))";
 
-    public JsonNode ownedGraph(Caller c) {
+    public JsonNode ownedGraph(Caller c, boolean includeQuestions) {
         String select =
                 "id,folder_id,lectures!inner("
                         + LECTURE
                         + ",materials!materials_lecture_id_fkey(id,file_name,created_at,material_versions(id,version_no,source_path,slides("
                         + SLIDE
-                        + ",slide_instructor_notes(slide_id,body)))),"
-                        + QUESTIONS
+                        + ",slide_instructor_notes(slide_id,body))))"
+                        + (includeQuestions ? "," + QUESTIONS : "")
                         + ")";
         return db.get(
                 c,

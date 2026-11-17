@@ -250,7 +250,7 @@
     },
     {
       "id": 7,
-      "title": "OhPin container CPU",
+      "title": "Container CPU usage (cores)",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -258,21 +258,102 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 8,
         "x": 0,
         "y": 24
       },
       "targets": [
         {
-          "expr": "rate(container_cpu_usage_seconds_total{job=\"cadvisor\",name=~\".*ohpin-be.*\"}[5m])",
+          "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",name!=\"\",id!=\"/\"}[5m]))",
           "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "percentunit",
+          "unit": "cores",
           "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Container CPU capacity (cores)",
+      "description": "Configured CPU quota; containers without a quota use the host logical core count as their available capacity.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 24
+      },
+      "targets": [
+        {
+          "expr": "max by (name) ((container_spec_cpu_quota{job=\"cadvisor\",name!=\"\",id!=\"/\"} / container_spec_cpu_period{job=\"cadvisor\",name!=\"\",id!=\"/\"}) > 0) or max by (name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",name!=\"\",id!=\"/\"}[5m]) * 0 + scalar(machine_cpu_cores{job=\"cadvisor\"}))",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cores",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Container CPU usage / capacity",
+      "description": "CPU cores in use divided by the configured quota; for unlimited containers, divided by the host logical core count.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 24
+      },
+      "targets": [
+        {
+          "expr": "100 * sum by (name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",name!=\"\",id!=\"/\"}[5m])) / (max by (name) ((container_spec_cpu_quota{job=\"cadvisor\",name!=\"\",id!=\"/\"} / container_spec_cpu_period{job=\"cadvisor\",name!=\"\",id!=\"/\"}) > 0) or max by (name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",name!=\"\",id!=\"/\"}[5m]) * 0 + scalar(machine_cpu_cores{job=\"cadvisor\"})))",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
         },
         "overrides": []
       },
@@ -297,9 +378,9 @@
       },
       "gridPos": {
         "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 24
+        "w": 24,
+        "x": 0,
+        "y": 32
       },
       "targets": [
         {

@@ -69,6 +69,7 @@ public final class ApiRequestLoggingFilter extends OncePerRequestFilter {
     if (clientDisconnected) return Level.INFO;
     if (failure != null || status >= 500) return Level.ERROR;
     if (status == 429 || durationMs >= SLOW_REQUEST_MS) return Level.WARN;
+    if (status >= 200 && status < 300) return Level.DEBUG;
     return Level.INFO;
   }
 
